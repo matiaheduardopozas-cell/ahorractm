@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}
+    // Document ID: Firebase Auth UID
+    // Fields:
+    //   - theme: string (optional, allowed theme id)
+    //   - cats: list (optional, list of category objects, max 50)
+    //   - email: string (optional, valid email format)
+    //   - displayName: string (optional, max 100 chars)
+    //   - photoURL: string (optional, max 500 chars)
+    //   - updatedAt: string or timestamp (optional)
+    //
+    // Subcollection: users/{userId}/transactions/{txId}
+    // Document ID: auto-generated or custom string
+    // Fields:
+    //   - type: string ('income', 'expense', 'savings')
+    //   - amount: number (> 0 and <= 1000000000000)
+    //   - catId: string (max 50 chars)
+    //   - pay: string ('cash', 'card')
+    //   - note: string (optional, max 300 chars)
+    //   - date: string (ISO date string) or timestamp
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidTx(data) {
+      return data.keys().hasAll(['type', 'amount', 'catId', 'pay', 'date']) &&
+             data.keys().hasOnly(['type', 'amount', 'catId', 'pay', 'note', 'date']) &&
+             data.type in ['income', 'expense', 'savings'] &&
+             data.amount is number && data.amount > 0 && data.amount < 1000000000000 &&
+             data.catId is string && data.catId.size() > 0 && data.catId.size() <= 60 &&
+             data.pay in ['cash', 'card'] &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 300)) &&
+             (data.date is string && data.date.size() <= 50);
+    }
+
+    function isValidUserDoc(data) {
+      return (!('theme' in data) || (data.theme is string && data.theme.size() <= 30)) &&
+             (!('cats' in data) || (data.cats is list && data.cats.size() <= 50)) &&
+             (!('email' in data) || (data.email is string && data.email.size() <= 120)) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500));
+    }
+
+    // Default deny for all other root documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User settings and isolated personal data
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidUserDoc(request.resource.data);
+      allow delete: if isOwner(userId);
+
+      // Transactions subcollection
+      match /transactions/{txId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidTx(request.resource.data);
+        allow delete: if isOwner(userId);
+      }
+    }
+  }
+}

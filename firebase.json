@@ -1,0 +1,39 @@
+{
+  "hosting": [
+    {
+      "site": "ahorractm",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "site": "wallet-personal-73c03",
+      "public": ".",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    }
+  ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Ahorra CTM",
+        "supportEmail": "matiaheduardopozas@gmail.com",
+        "authorizedRedirectUris": [
+          "https://ahorractm.firebaseapp.com/__/auth/handler",
+          "https://ahorractm.web.app/__/auth/handler",
+          "https://wallet-personal-73c03.firebaseapp.com/__/auth/handler",
+          "https://wallet-personal-73c03.web.app/__/auth/handler"
+        ]
+      }
+    }
+  }
+}
